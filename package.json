@@ -1,0 +1,11 @@
+﻿{
+  "name": "com.utils.lightinject",
+  "displayName": "Lightweight DI utility",
+  "version": "0.0.1",
+  "unity": "6.3",
+  "description": "Lightweight dependency injection framework for Unity.",
+  "author": {
+    "name": "Nikita Pogutsa",
+    "url": "https://github.com/nikita-pogutsa"
+  }
+}
