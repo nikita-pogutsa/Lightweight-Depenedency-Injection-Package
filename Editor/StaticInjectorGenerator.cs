@@ -1,12 +1,17 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
-
 namespace Editor
 {
 	[Generator]
-	public class StaticInjectorGenerator
+	public sealed class StaticInjectorGenerator: ISourceGenerator
 	{
-		
-		
+		public void Initialize(GeneratorInitializationContext context)
+		{
+			
+		}
+
+		public void Execute(GeneratorExecutionContext context)
+		{
+			
+		}
 	}
 }
