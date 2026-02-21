@@ -4,16 +4,28 @@ using UnityEngine;
 
 namespace Runtime
 {
-	public static class Injection<T>
+	public interface IInjectionContext
 	{
-		public static void Inject()
+		object this[Type type] { get; }
+	}
+
+	public class InjectionContext: IInjectionContext
+	{
+		private Dictionary<Type, object> injectedTypes = new Dictionary<Type, object>();
+		public void AddToContext<T>(Type type, T val)
 		{
+			injectedTypes.Add(type,val);
 		}
+		public object this[Type type] => injectedTypes[ type ] ?? throw new Exception($"Type of {type} has not been registered!");
 	}
 
 	public class Injector
 	{
-		private Dictionary<Type, object> injectedTypes = new Dictionary<Type, object>();
+		private readonly InjectionContext context;
+		public Injector()
+		{
+			context = new InjectionContext();
+		}
 		public bool TryInject()
 		{
 			return false;
@@ -21,7 +33,7 @@ namespace Runtime
 
 		public void Register<T>(T val)
 		{
-			injectedTypes.Add(typeof(T), val);
+			context.AddToContext(typeof(T), val);
 		}
 
 		public GameObject InstantiateMonoBehavior<T>(GameObject obj) where T : Component
@@ -29,7 +41,7 @@ namespace Runtime
 			var component = obj.GetComponent<T>();
 			if( !component )
 			{
-				Injection<T>.Inject();
+				//Injection<T>.Inject();
 				//throw 
 			}
 			return obj;
