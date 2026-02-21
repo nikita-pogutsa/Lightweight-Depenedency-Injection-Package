@@ -8,10 +8,6 @@ namespace Runtime
 	/// </summary>
 	public class InjectAttributeSpecific : Attribute
 	{
-		/// <summary>
-		/// The type to inject, e.g. A:IInterface 
-		/// </summary>
-		public Type type;
 	}
 	public class InjectAttribute : Attribute
 	{
