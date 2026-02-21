@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Runtime;
 using UnityEditor;
 namespace Editor.Roslyn
 {
@@ -13,6 +14,8 @@ namespace Editor.Roslyn
 		public string Hash => _hash;
 
 		private IEnumerable<Assembly> _loadedAssemblies;
+		private IEnumerable<Type> _typeList;
+
 		public List<Assembly> ReferencedAssemblies
 		{
 			get
@@ -34,14 +37,21 @@ namespace Editor.Roslyn
 			}
 		}
 		public IEnumerable<string> AssemblyList => _assemblyList;
+		public IEnumerable<Type> TypeList => _typeList;
 
 		public void Save(string hash)
 		{
 			_hash = hash;
 		}
-		public void SaveAssemblyList(List<_Assembly> assemblyList)
+		public void SaveAssemblyList(List<Assembly> assemblyList)
 		{
 			_assemblyList = assemblyList.Select(x => x.FullName);
+			_typeList = assemblyList.SelectMany(x=>x.GetTypes()).Where(x =>
+			{
+				var fields = x.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+				return fields.Any(fieldInfo => fieldInfo.GetCustomAttribute<InjectAttributeSpecific>() != null);
+			});
+
 		}
 	}
 }

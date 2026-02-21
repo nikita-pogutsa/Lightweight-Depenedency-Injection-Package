@@ -2,16 +2,13 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using Editor.Roslyn;
 using Runtime;
 using UnityEditor;
 using UnityEditor.Compilation;
-using UnityEditor.VersionControl;
 using UnityEngine;
-using UnityEngine.Diagnostics;
 
 namespace Editor
 {
@@ -88,7 +85,7 @@ namespace Editor
                     let referencedAssemblies = assembly.GetReferencedAssemblies()
                     where referencedAssemblies.Any
                         (referenced => referenced.Name == "Utils.LightInject")
-                    select assembly).Cast<_Assembly>().ToList();
+                    select assembly).ToList();
                 assemblyCacheStateSo.SaveAssemblyList(assemblyList);
             }
         }
@@ -103,13 +100,14 @@ namespace Editor
 				using System;
 				using System.Collections.Generic;
 				using Runtime;
+				using UnityEngine;
 
 				namespace LightInject.Generated
 				{");
 
-            GenerateInjectionRegistry(builder);
+            //GenerateInjectionRegistry(builder);
             GenerateConcreteImpl(builder);
-
+            GenerateSubscriptionClass(builder);
             //namespace bracket closed
             builder.AppendLine("}");
             if (!AssetDatabase.IsValidFolder("Assets/Source/LightInject"))
@@ -124,6 +122,25 @@ namespace Editor
             //         Application.dataPath, "Source", "LightInject", "StaticInjectorGenerator_Inject.cs"),
             //     builder.ToString());
         }
+
+        private static void GenerateSubscriptionClass(StringBuilder builder)
+        {
+            builder.Append(@"
+            internal static class StaticInjectorSubscription
+                {
+                    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+                    internal static void Subscribe()
+                        {");
+            var typeList = AssemblyCacheState.instance.TypeList;
+            foreach (var type in typeList)
+            {
+                builder.AppendLine($"{type.Name}_InjectorImpl.Register();");
+            }
+            builder.AppendLine(@"}
+                }
+             ");
+        }
+
 
         private static void GenerateInjectionRegistry(StringBuilder builder)
         {
@@ -150,44 +167,37 @@ namespace Editor
                     }");
         }
 
-        public static void GenerateConcreteImpl(StringBuilder builder)
+        private static void GenerateConcreteImpl(StringBuilder builder)
         {
-            foreach (var assembly in AssemblyCacheState.instance.ReferencedAssemblies)
+            var typeList = AssemblyCacheState.instance.TypeList;
+
+            foreach (var type in typeList)
             {
-                foreach (var type in assembly.GetTypes())
-                {
-                    var fieldInfos = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
-                    var injectAttrFields = fieldInfos
-                        .Where(fieldInfo => fieldInfo.GetCustomAttribute<InjectAttributeSpecific>() != null).ToArray();
-                    if (!injectAttrFields.Any())
-                    {
-                        continue;
-                    }
-
-                    
-                    builder.AppendLine($"public static class {type.Name}_InjectorImpl");
-                    builder.AppendLine("{");
-                    builder.Append(@" internal static void Register()
+                builder.AppendLine($"public static class {type.Name}_InjectorImpl");
+                builder.AppendLine("{");
+                builder.Append(@" internal static void Register()
                     {");
-                    builder.Append($"StaticInjectorRegistry.TryRegister<{type.Name}>(InjectInternal);");
+                builder.Append($"StaticInjectorRegistry.TryRegister<{type.Name}>(InjectInternal);");
 
-                    builder.Append($"void InjectInternal({type.Name} inst, IInjectionContext ctx)");
-                    builder.AppendLine("{");
+                builder.Append($"void InjectInternal({type.Name} inst, IInjectionContext ctx)");
+                builder.AppendLine("{");
 
-                    foreach (var fieldInfo in injectAttrFields)
+                var injectAttrFields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    .Where(field => field.GetCustomAttribute<InjectAttributeSpecific>() != null);
+                foreach (var fieldInfo in injectAttrFields)
+                {
+                    if (fieldInfo.GetCustomAttribute<InjectAttributeSpecific>() != null)
                     {
-                        if (fieldInfo.GetCustomAttribute<InjectAttributeSpecific>() != null)
-                        {
-                            //var fieldType = fieldInfo.GetCustomAttribute<InjectAttributeSpecific>().GetType();
-                            builder.AppendFormat(@"
-                                inst.{0} = ctx[typeof({1})] as {2};", fieldInfo.Name, fieldInfo.FieldType, fieldInfo.FieldType);
-                        }
+                        //var fieldType = fieldInfo.GetCustomAttribute<InjectAttributeSpecific>().GetType();
+                        builder.AppendFormat(@"
+                                inst.{0} = ctx[typeof({1})] as {2};", fieldInfo.Name, fieldInfo.FieldType,
+                            fieldInfo.FieldType);
                     }
-
-                    builder.AppendLine("}");
-                    builder.AppendLine("}");
-                    builder.AppendLine("}");
                 }
+
+                builder.AppendLine("}");
+                builder.AppendLine("}");
+                builder.AppendLine("}");
             }
         }
     }

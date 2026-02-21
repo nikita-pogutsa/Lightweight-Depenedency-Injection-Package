@@ -4,6 +4,30 @@ using UnityEngine;
 
 namespace Runtime
 {
+	
+	public static class StaticInjectorRegistry
+	{
+		private static readonly Dictionary<RuntimeTypeHandle, Action<object, IInjectionContext>> StaticContext = new();
+
+		public static bool TryRegister<T>(Action<T, IInjectionContext> action)
+		{
+			return StaticContext.TryAdd(typeof(T).TypeHandle,
+				(obj, context) => { action?.Invoke((T) obj, context); });
+		}
+
+		public static bool Inject<T>(T instance, IInjectionContext injectionContext)
+		{
+			var type = typeof(T);
+			if (StaticContext.TryGetValue(type.TypeHandle, out var obj))
+			{
+				obj?.Invoke(instance, injectionContext);
+				return true;
+			}
+
+			return false;
+		}
+	}
+	
 	public interface IInjectionContext
 	{
 		object this[Type type] { get; }
@@ -21,17 +45,15 @@ namespace Runtime
 
 	public class Injector
 	{
-		private readonly InjectionContext context;
-		public Injector()
+		private readonly InjectionContext context = new();
+
+		public bool TryInject<T>(T instance)
 		{
-			context = new InjectionContext();
-		}
-		public bool TryInject()
-		{
+			StaticInjectorRegistry.Inject(instance, context);
 			return false;
 		}
 
-		public void Register<T>(T val)
+		public void Record<T>(T val)
 		{
 			context.AddToContext(typeof(T), val);
 		}
@@ -41,8 +63,7 @@ namespace Runtime
 			var component = obj.GetComponent<T>();
 			if( !component )
 			{
-				//Injection<T>.Inject();
-				//throw 
+				
 			}
 			return obj;
 		}
