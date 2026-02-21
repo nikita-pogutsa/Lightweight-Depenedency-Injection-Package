@@ -9,9 +9,11 @@ using Runtime;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
+using UnityEngine.Scripting;
 
 namespace Editor
 {
+    [Preserve]
     public static class StaticInjectorGeneratorBootstrap
     {
         static StaticInjectorGeneratorBootstrap()
